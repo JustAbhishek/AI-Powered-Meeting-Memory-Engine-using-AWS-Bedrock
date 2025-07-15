@@ -14,11 +14,19 @@ DB_NAME = os.environ['DB_NAME']
 DB_USER = os.environ['DB_USER']
 DB_PASSWORD = os.environ['DB_PASSWORD']
 
+def extract_company(meeting_id):
+    # Extracts company from meeting_id: e.g., "transcribe-TRANSRAIL-20250713-174907"
+    try:
+        parts = meeting_id.split('-')
+        return parts[1].upper() if len(parts) > 1 else "UNKNOWN"
+    except Exception:
+        return "UNKNOWN"
+
 def lambda_handler(event, context):
     # Extract S3 bucket and key from the event
     record = event['Records'][0]
     bucket = record['s3']['bucket']['name']
-    key = record['s3']['object']['key']  # e.g., embedded_transcripts/tcs.embedded.json
+    key = record['s3']['object']['key']
 
     print(f"Triggered by file: s3://{bucket}/{key}")
 
@@ -28,6 +36,9 @@ def lambda_handler(event, context):
 
     if not embeddings:
         raise ValueError("No embeddings found")
+
+    meeting_id = embeddings[0]["meeting_id"]
+    company = extract_company(meeting_id)
 
     # Connect to PostgreSQL
     conn = psycopg2.connect(
@@ -42,15 +53,13 @@ def lambda_handler(event, context):
         with conn:
             with conn.cursor() as cur:
                 insert_query = """
-                    INSERT INTO meeting_chunks (meeting_id, chunk, chunk_index, embedding)
+                    INSERT INTO meeting_chunks (meeting_id, company, chunk, chunk_index, embedding)
                     VALUES %s
                 """
-
                 values = [
-                    (row["meeting_id"], row["chunk"], row["chunk_index"], row["embedding"])
+                    (row["meeting_id"], company, row["chunk"], row["chunk_index"], row["embedding"])
                     for row in embeddings
                 ]
-
                 execute_values(cur, insert_query, values)
                 print(f"Inserted {len(values)} embeddings into DB")
     finally:
@@ -59,5 +68,6 @@ def lambda_handler(event, context):
     return {
         "status": "success",
         "inserted_rows": len(embeddings),
-        "meeting_id": embeddings[0]["meeting_id"]
+        "meeting_id": meeting_id,
+        "company": company
     }
