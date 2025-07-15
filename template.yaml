@@ -76,7 +76,7 @@ Resources:
           DB_HOST: 
           DB_PORT: 
           DB_NAME: 
-          DB_USER: 
+          DB_USER:
           DB_PASSWORD: 
       Policies:
         - S3ReadPolicy:
@@ -86,3 +86,46 @@ Resources:
               Action:
                 - s3:GetObject
               Resource: arn:aws:s3:::conf-call-audio-bucket/embedded_transcripts/*
+
+# --- Bedrock LLM orchestration ---
+
+  BedrockLLMFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: bedrock-llm
+      CodeUri: lambdas/bedrock_llm/
+      Handler: bedrock_llm.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+      Environment:
+        Variables:
+          DB_HOST: 
+          DB_PORT: 
+          DB_NAME: 
+          DB_USER: 
+          DB_PASSWORD: 
+
+# --- API Gateway  ---
+
+  APIGatewayLLMFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: api-llm-handler
+      CodeUri: api_gateway/
+      Handler: api_lambda.lambda_handler
+      Events:
+        LLMAPI:
+          Type: Api
+          Properties:
+            Path: /query
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt BedrockLLMFunction.Arn
