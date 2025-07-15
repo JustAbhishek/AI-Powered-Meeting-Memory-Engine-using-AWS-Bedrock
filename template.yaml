@@ -75,9 +75,9 @@ Resources:
         Variables:
           DB_HOST: 
           DB_PORT: 
-          DB_NAME: 
-          DB_USER:
-          DB_PASSWORD: 
+          DB_NAME:
+          DB_USER: 
+          DB_PASSWORD:
       Policies:
         - S3ReadPolicy:
             BucketName: conf-call-audio-bucket
