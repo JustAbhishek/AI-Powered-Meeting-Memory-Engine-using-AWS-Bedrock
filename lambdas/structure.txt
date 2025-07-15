@@ -1,0 +1,13 @@
+meeting-extractor-pipeline/
+├── lambdas/
+│   ├── start_transcribe/start_transcribe.py
+│   ├── preprocess_transcript/preprocess_transcript.py
+│   ├── embed_text/embed_text.py
+│   ├── store_vectors/store_vectors.py
+│   └── bedrock_llm/bedrock_llm.py
+├── api_gateway/api_lambda.py
+├── shared/
+│   ├── s3_utils.py
+│   ├── db_utils.py
+│   └── config.py
+├── requirements.txt

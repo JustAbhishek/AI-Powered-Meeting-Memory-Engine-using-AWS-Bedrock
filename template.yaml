@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Meeting Extractor Pipeline using AWS SAM
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 300
+    MemorySize: 512
+
+Resources:
+
+  StartTranscribeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: start-transcribe
+      CodeUri: lambdas/start_transcribe/
+      Handler: start_transcribe.lambda_handler
+      Timeout: 300
+      Policies:
+        - S3ReadPolicy:
+            BucketName: conf-call-audio-bucket
+        - S3WritePolicy:
+            BucketName: conf-call-audio-bucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - transcribe:StartTranscriptionJob
+                - transcribe:GetTranscriptionJob
+              Resource: "*"
+  # -- Lambda: Preprocess Transcript (manual trigger setup) --
+  PreprocessTranscriptFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: preprocess-transcript
+      CodeUri: lambdas/preprocess_transcript/
+      Handler: preprocess_transcript.lambda_handler
+      Timeout: 300
+      Policies:
+        - S3ReadPolicy:
+            BucketName: conf-call-audio-bucket
+        - S3WritePolicy:
+            BucketName: conf-call-audio-bucket
+
+# -- Lambda: Embed Text using Titan --
+  EmbedTextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: embed-text
+      CodeUri: lambdas/embed_text/
+      Handler: embed_lambda.lambda_handler
+      Timeout: 300
+      Policies:
+        - S3ReadPolicy:
+            BucketName: conf-call-audio-bucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: arn:aws:s3:::conf-call-audio-bucket/embedded_transcripts/*
+  
+# --- Store Vectors in Postgres ---
+  StoreVectorsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: store-vectors
+      CodeUri: lambdas/store_vectors/
+      Handler: store_vectors.lambda_handler
+      Timeout: 300
+      Environment:
+        Variables:
+          DB_HOST: 
+          DB_PORT:
+          DB_NAME:
+          DB_USER: 
+          DB_PASSWORD:
+      Policies:
+        - S3ReadPolicy:
+            BucketName: conf-call-audio-bucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: arn:aws:s3:::conf-call-audio-bucket/embedded_transcripts/*
