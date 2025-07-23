@@ -41,7 +41,7 @@ if "company" not in st.session_state:
 
 # --- Real API Call ---
 def call_api(question, company=None):
-    url = "https://ym8w92784e.execute-api.us-east-1.amazonaws.com/Prod/query"  # 🔁 Replace with your actual endpoint
+    url = ""  # 🔁 Replace with your actual endpoint
     payload = {
         "question": question,
     }
